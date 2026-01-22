@@ -1,331 +1,339 @@
 <?php
 // --- KONFIGURASI DATABASE ---
-define('DB_SERVER', 'localhost');
+define('DB_SERVER', '127.0.0.1');
 define('DB_USERNAME', 'root'); // Ganti dengan username DB Anda
 define('DB_PASSWORD', '');     // Ganti dengan password DB Anda
 define('DB_NAME', 'pahlawan_db'); // Ganti dengan nama DB Anda
 
 // --- KONEKSI DATABASE ---
- $conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
+$conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
 if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
 
-// --- VARIABEL GLOBAL ---
- $heroes = [];
- $hero_to_edit = null;
- $success_message = '';
- $error_message = '';
+// Ambil 6 pahlawan terbaru untuk ditampilkan di landing page
+$sql_heroes = "SELECT * FROM pahlawan ORDER BY id DESC LIMIT 6";
+$result = $conn->query($sql_heroes);
+$heroes = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-// --- LOGIKA CRUD ---
-
-// 1. HAPUS (DELETE)
-if (isset($_GET['delete_id'])) {
-    $id_to_delete = (int)$_GET['delete_id'];
-    
-    // Ambil nama file gambar untuk dihapus dari folder
-    $sql_get_image = "SELECT gambar FROM pahlawan WHERE id = ?";
-    $stmt = $conn->prepare($sql_get_image);
-    $stmt->bind_param("i", $id_to_delete);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $hero = $result->fetch_assoc();
-    
-    if ($hero && !empty($hero['gambar'])) {
-        // --- PERUBAHAN: PATH HAPUS GAMBAR ---
-        $file_path = 'assets/img/' . basename($hero['gambar']);
-        if (file_exists($file_path)) {
-            unlink($file_path); // Hapus file gambar
-        }
-    }
-
-    // Hapus data dari database
-    $sql_delete = "DELETE FROM pahlawan WHERE id = ?";
-    $stmt = $conn->prepare($sql_delete);
-    $stmt->bind_param("i", $id_to_delete);
-    if ($stmt->execute()) {
-        $success_message = "Data pahlawan berhasil dihapus.";
-    } else {
-        $error_message = "Gagal menghapus data.";
-    }
-    header("Location: index.php?message=" . urlencode($success_message));
-    exit;
-}
-
-// 2. TAMBAH & EDIT (CREATE & UPDATE)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-    $nama = $_POST['nama_pahlawan'];
-    $daerah = $_POST['daerah'];
-    $jasa = $_POST['jasa'];
-    $gambar_path = null;
-
-    // Proses Upload Gambar
-    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
-        $file_tmp_path = $_FILES['gambar']['tmp_name'];
-        $file_name = basename($_FILES['gambar']['name']);
-        // Sanitasi nama file
-        $file_name = preg_replace("/[^A-Z0-9._-]/i", '_', $file_name);
-        // --- PERUBAHAN: PATH UPLOAD GAMBAR ---
-        $dest_path = 'assets/img/' . $file_name;
-
-        if (move_uploaded_file($file_tmp_path, $dest_path)) {
-            $gambar_path = $file_name; // Simpan hanya nama filenya
-        }
-    }
-
-    if ($id > 0) { // MODE EDIT
-        $sql = "UPDATE pahlawan SET nama_pahlawan=?, daerah=?, jasa=?";
-        $params = [$nama, $daerah, $jasa];
-        $types = "sss";
-        
-        if ($gambar_path) {
-            $sql .= ", gambar=?";
-            $params[] = $gambar_path;
-            $types .= "s";
-        }
-        $sql .= " WHERE id=?";
-        $params[] = $id;
-        $types .= "i";
-
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        
-        if ($stmt->execute()) {
-            $success_message = "Data pahlawan berhasil diperbarui.";
-        } else {
-            $error_message = "Gagal memperbarui data.";
-        }
-
-    } else { // MODE TAMBAH
-        if ($gambar_path) {
-            $sql = "INSERT INTO pahlawan (nama_pahlawan, daerah, jasa, gambar) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssss", $nama, $daerah, $jasa, $gambar_path);
-        } else {
-            $sql = "INSERT INTO pahlawan (nama_pahlawan, daerah, jasa) VALUES (?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("sss", $nama, $daerah, $jasa);
-        }
-        
-        if ($stmt->execute()) {
-            $success_message = "Pahlawan baru berhasil ditambahkan.";
-        } else {
-             $error_message = "Gagal menambah data.";
-        }
-    }
-    
-    header("Location: index.php?message=" . urlencode($success_message));
-    exit;
-}
-
-// 3. AMBIL DATA UNTUK EDIT
-if (isset($_GET['edit_id'])) {
-    $id_to_edit = (int)$_GET['edit_id'];
-    $sql = "SELECT * FROM pahlawan WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id_to_edit);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $hero_to_edit = $result->fetch_assoc();
-}
-
-// 4. AMBIL SEMUA DATA (READ)
- $sql_read = "SELECT * FROM pahlawan ORDER BY id DESC";
- $result = $conn->query($sql_read);
-if ($result) {
-    $heroes = $result->fetch_all(MYSQLI_ASSOC);
-}
-
- $conn->close();
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galeri Pahlawan Indonesia</title>
+    <title>Galeri Pahlawan Indonesia - Beranda</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        .img-preview {
-            max-width: 100%;
-            max-height: 200px;
-            object-fit: cover;
-            border-radius: 0.5rem;
-            margin-top: 0.5rem;
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        .hero-title {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .bg-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23dc2626' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-red-50 to-white min-h-screen">
-    <!-- Header -->
-    <header class="bg-red-700 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6 flex justify-between items-center"> 
-            <button onclick="openModal()" class="bg-white text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition duration-300 flex items-center">
-                <i class="fas fa-plus-circle mr-2"></i> Tambah Pahlawan
-            </button>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- Notifikasi -->
-        <?php if (isset($_GET['message']) && !empty($_GET['message'])): ?>
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <span class="block sm:inline"><?php echo htmlspecialchars($_GET['message']); ?></span>
-            </div>
-        <?php endif; ?>
-        <?php if (isset($_GET['error']) && !empty($_GET['error'])): ?>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <span class="block sm:inline"><?php echo htmlspecialchars($_GET['error']); ?></span>
-            </div>
-        <?php endif; ?>
-
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div class="p-6">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Daftar Pahlawan</h2>
-                
-                <div class="overflow-x-auto">
-                    <table class="min-w-full leading-normal">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Gambar</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Pahlawan</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Asal Daerah</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Jasa</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($heroes)): ?>
-                                <tr>
-                                    <td colspan="5" class="text-center py-10">
-                                        <i class="fas fa-inbox text-6xl text-gray-300"></i>
-                                        <p class="text-gray-500 mt-4">Belum ada data pahlawan. Tambahkan pahlawan pertama!</p>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($heroes as $hero): ?>
-                                    <tr class="border-b hover:bg-gray-50">
-                                        <td class="px-5 py-5">
-                                            <!-- --- PERUBAHAN: PATH TAMPILAN GAMBAR DI TABEL --- -->
-                                            <img src="<?php echo !empty($hero['gambar']) ? 'assets/img/' . htmlspecialchars($hero['gambar']) : 'https://via.placeholder.com/80x80.png?text=No+Image'; ?>" alt="<?php echo htmlspecialchars($hero['nama_pahlawan']); ?>" class="w-16 h-16 object-cover rounded-lg">
-                                        </td>
-                                        <td class="px-5 py-5 text-sm font-medium text-gray-900"><?php echo htmlspecialchars($hero['nama_pahlawan']); ?></td>
-                                        <td class="px-5 py-5 text-sm"><?php echo htmlspecialchars($hero['daerah']); ?></td>
-                                        <td class="px-5 py-5 text-sm"><?php echo htmlspecialchars($hero['jasa']); ?></td>
-                                        <td class="px-5 py-5 text-sm">
-                                            <a href="index.php?edit_id=<?php echo $hero['id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">
-                                                <i class="fas fa-edit"></i> Edit
-                                            </a>
-                                            <a href="index.php?delete_id=<?php echo $hero['id']; ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="text-red-600 hover:text-red-900">
-                                                <i class="fas fa-trash"></i> Hapus
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+<body class="bg-gradient-to-b from-red-50 to-white">
+    <!-- Header/Navigation -->
+    <header class="sticky top-0 z-50 bg-white shadow-md">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-red-600 text-white p-2 rounded-lg">
+                        <i class="fas fa-landmark text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-red-700 hero-title">Galeri Pahlawan</h1>
                 </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal Form (Create/Update) -->
-    <div id="heroModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-        <div class="relative p-5 border w-96 shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-900" id="modalTitle">
-                    <?php echo $hero_to_edit ? 'Edit Data Pahlawan' : 'Tambah Pahlawan Baru'; ?>
-                </h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
+                
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#home" class="text-red-700 font-medium hover:text-red-800 transition">Beranda</a>
+                    <a href="#gallery" class="text-gray-700 hover:text-red-700 transition">Galeri</a>
+                    <a href="#about" class="text-gray-700 hover:text-red-700 transition">Tentang</a>
+                    <a href="admin.php" class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium">
+                        <i class="fas fa-tools mr-2"></i>Kelola Data
+                    </a>
+                </nav>
+                
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-button" class="md:hidden text-red-700">
+                    <i class="fas fa-bars text-2xl"></i>
                 </button>
             </div>
             
-            <form action="index.php" method="POST" enctype="multipart/form-data" class="space-y-4">
-                <input type="hidden" name="id" value="<?php echo $hero_to_edit['id'] ?? ''; ?>">
-                
-                <div>
-                    <label for="nama_pahlawan" class="block text-sm font-medium text-gray-700">Nama Pahlawan</label>
-                    <input type="text" id="nama_pahlawan" name="nama_pahlawan" required
-                           value="<?php echo htmlspecialchars($hero_to_edit['nama_pahlawan'] ?? ''); ?>"
-                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                </div>
-                
-                <div>
-                    <label for="daerah" class="block text-sm font-medium text-gray-700">Asal Daerah</label>
-                    <input type="text" id="daerah" name="daerah" required
-                           value="<?php echo htmlspecialchars($hero_to_edit['daerah'] ?? ''); ?>"
-                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                </div>
-                
-                <div>
-                    <label for="jasa" class="block text-sm font-medium text-gray-700">Jasa</label>
-                    <textarea id="jasa" name="jasa" rows="3" required
-                              class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"><?php echo htmlspecialchars($hero_to_edit['jasa'] ?? ''); ?></textarea>
-                </div>
-
-                <div>
-                    <label for="gambar" class="block text-sm font-medium text-gray-700">Gambar (Opsional)</label>
-                    <input type="file" id="gambar" name="gambar" accept="image/*" 
-                           class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
-                    <?php if ($hero_to_edit && !empty($hero_to_edit['gambar'])): ?>
-                        <p class="text-xs text-gray-500 mt-2">Gambar saat ini:</p>
-                        <!-- --- PERUBAHAN: PATH TAMPILAN GAMBAR DI MODAL --- -->
-                        <img src="assets/img/<?php echo htmlspecialchars($hero_to_edit['gambar']); ?>" alt="Current Image" class="img-preview">
-                    <?php endif; ?>
-                    <img id="imagePreview" class="img-preview hidden" alt="Preview Gambar">
-                </div>
-                
-                <div class="flex justify-end pt-4">
-                    <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-400 transition duration-300">
-                        Batal
-                    </button>
-                    <button type="submit" class="bg-red-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-800 transition duration-300">
-                        Simpan
-                    </button>
-                </div>
-            </form>
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-4 pb-4">
+                <a href="#home" class="block text-red-700 font-medium">Beranda</a>
+                <a href="#gallery" class="block text-gray-700">Galeri</a>
+                <a href="#about" class="block text-gray-700">Tentang</a>
+                <a href="admin.php" class="block bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium text-center">
+                    <i class="fas fa-tools mr-2"></i>Kelola Data
+                </a>
+            </div>
         </div>
-    </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="py-16 md:py-24 bg-pattern">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0">
+                    <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6 hero-title">
+                        Mengenal <span class="text-red-600">Pahlawan</span> Indonesia
+                    </h2>
+                    <p class="text-lg text-gray-700 mb-8">
+                        Jelajahi kisah perjuangan dan jasa para pahlawan dari berbagai daerah di Indonesia. 
+                        Mereka adalah pelopor kemerdekaan dan pembangun bangsa yang patut kita kenang.
+                    </p>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#gallery" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium">
+                            <i class="fas fa-images mr-2"></i>Lihat Galeri
+                        </a>
+                        <a href="admin.php" class="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg hover:bg-red-50 transition font-medium">
+                            <i class="fas fa-plus-circle mr-2"></i>Tambah Pahlawan
+                        </a>
+                    </div>
+                </div>
+                <div class="md:w-1/2">
+                    <div class="relative">
+                        <div class="bg-red-100 rounded-2xl p-2 shadow-xl">
+                            <img src="https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
+                                 alt="Patung Pahlawan" 
+                                 class="rounded-xl w-full h-64 md:h-80 object-cover">
+                        </div>
+                        <div class="absolute -bottom-4 -left-4 bg-white p-4 rounded-xl shadow-lg">
+                            <div class="flex items-center">
+                                <div class="bg-red-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-users text-red-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900"><?php echo count($heroes); ?>+</p>
+                                    <p class="text-gray-600">Pahlawan Terdaftar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="gallery" class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 hero-title">Galeri Pahlawan</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Kumpulan pahlawan nasional dari berbagai daerah di Indonesia
+                </p>
+            </div>
+            
+            <?php if (empty($heroes)): ?>
+                <div class="text-center py-12 bg-gray-50 rounded-2xl">
+                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Belum ada data pahlawan</h3>
+                    <p class="text-gray-500 mb-6">Silakan tambahkan pahlawan pertama melalui halaman admin</p>
+                    <a href="admin.php" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium inline-flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i>Tambah Pahlawan Pertama
+                    </a>
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <?php foreach ($heroes as $hero): ?>
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover border border-gray-100">
+                            <div class="h-48 overflow-hidden">
+                                <!-- PATH GAMBAR -->
+                                <img src="<?php echo !empty($hero['gambar']) ? 'assets/img/' . htmlspecialchars($hero['gambar']) : 'https://images.unsplash.com/photo-1541336032412-2048a678540d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'; ?>" 
+                                     alt="<?php echo htmlspecialchars($hero['nama_pahlawan']); ?>"
+                                     class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
+                            </div>
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="text-xl font-bold text-gray-900"><?php echo htmlspecialchars($hero['nama_pahlawan']); ?></h3>
+                                    <span class="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full">
+                                        <?php echo htmlspecialchars($hero['daerah']); ?>
+                                    </span>
+                                </div>
+                                <p class="text-gray-600 mb-4 line-clamp-3">
+                                    <?php echo htmlspecialchars($hero['jasa']); ?>
+                                </p>
+                                <div class="flex justify-between items-center">
+                                    <a href="admin.php?edit_id=<?php echo $hero['id']; ?>" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                        <i class="fas fa-info-circle mr-1"></i>Detail
+                                    </a>
+                                    <a href="admin.php" class="text-gray-500 hover:text-red-600">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <div class="text-center mt-12">
+                    <a href="admin.php" class="inline-flex items-center bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg hover:bg-red-50 transition font-medium">
+                        <i class="fas fa-list mr-2"></i>Lihat Semua Pahlawan
+                    </a>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-16 bg-gradient-to-br from-red-50 to-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-3xl mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 hero-title">Tentang Galeri Ini</h2>
+                <div class="bg-white rounded-2xl p-8 shadow-lg">
+                    <div class="mb-6">
+                        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-flag text-red-600 text-2xl"></i>
+                        </div>
+                        <p class="text-lg text-gray-700 mb-6">
+                            Galeri Pahlawan Indonesia adalah platform digital yang bertujuan untuk melestarikan 
+                            dan mengenang jasa-jasa para pahlawan dari seluruh penjuru tanah air. 
+                            Kami berkomitmen untuk menyebarkan nilai-nilai perjuangan dan patriotisme 
+                            kepada generasi muda.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="text-center p-4">
+                            <i class="fas fa-history text-red-500 text-3xl mb-3"></i>
+                            <h4 class="font-bold text-gray-900 mb-2">Melestarikan Sejarah</h4>
+                            <p class="text-gray-600 text-sm">Mengabadikan kisah perjuangan para pahlawan</p>
+                        </div>
+                        <div class="text-center p-4">
+                            <i class="fas fa-book-open text-red-500 text-3xl mb-3"></i>
+                            <h4 class="font-bold text-gray-900 mb-2">Edukasi Publik</h4>
+                            <p class="text-gray-600 text-sm">Sumber pembelajaran bagi masyarakat</p>
+                        </div>
+                        <div class="text-center p-4">
+                            <i class="fas fa-hands-helping text-red-500 text-3xl mb-3"></i>
+                            <h4 class="font-bold text-gray-900 mb-2">Partisipasi Aktif</h4>
+                            <p class="text-gray-600 text-sm">Masyarakat dapat berkontribusi menambah data</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-red-50 rounded-xl p-6 border border-red-100">
+                        <h4 class="font-bold text-gray-900 mb-3">Ingin Berkontribusi?</h4>
+                        <p class="text-gray-700 mb-4">
+                            Anda dapat menambahkan data pahlawan baru atau melengkapi informasi yang sudah ada 
+                            melalui halaman administrasi kami.
+                        </p>
+                        <a href="admin.php" class="inline-flex items-center bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium">
+                            <i class="fas fa-tools mr-2"></i>Mulai Kelola Data
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-red-800 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="bg-white p-2 rounded-lg">
+                            <i class="fas fa-landmark text-red-700 text-xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold hero-title">Galeri Pahlawan</h3>
+                    </div>
+                    <p class="text-red-100 max-w-md">
+                        Platform digital untuk melestarikan sejarah dan jasa para pahlawan Indonesia.
+                    </p>
+                </div>
+                
+                <div class="text-center md:text-right">
+                    <h4 class="text-lg font-bold mb-4">Navigasi Cepat</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#home" class="text-red-100 hover:text-white transition">Beranda</a></li>
+                        <li><a href="#gallery" class="text-red-100 hover:text-white transition">Galeri</a></li>
+                        <li><a href="#about" class="text-red-100 hover:text-white transition">Tentang</a></li>
+                        <li><a href="admin.php" class="text-red-100 hover:text-white transition font-medium">Kelola Data</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-red-700 mt-8 pt-8 text-center text-red-200">
+                <p>&copy; <?php echo date('Y'); ?> Galeri Pahlawan Indonesia. Semua hak dilindungi.</p>
+                <p class="mt-2 text-sm">Dibangun dengan <i class="fas fa-heart text-red-300"></i> untuk Indonesia</p>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        function openModal() {
-            document.getElementById('heroModal').classList.remove('hidden');
-        }
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
 
-        function closeModal() {
-            document.getElementById('heroModal').classList.add('hidden');
-            <?php if (!$hero_to_edit): ?>
-                document.querySelector('form').reset();
-                document.getElementById('imagePreview').classList.add('hidden');
-            <?php endif; ?>
-        }
-        
-        <?php if ($hero_to_edit): ?>
-            document.addEventListener('DOMContentLoaded', () => {
-                openModal();
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                if(this.getAttribute('href') === '#') return;
+                
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if(targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if(targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    const mobileMenu = document.getElementById('mobile-menu');
+                    if(!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                }
             });
-        <?php endif; ?>
+        });
 
-        const imageInput = document.getElementById('gambar');
-        const imagePreview = document.getElementById('imagePreview');
-
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    imagePreview.src = event.target.result;
-                    imagePreview.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
+        // Add active class to nav links on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('nav a[href^="#"]');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if(scrollY >= (sectionTop - 100)) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('text-red-700', 'font-medium');
+                link.classList.add('text-gray-700');
+                if(link.getAttribute('href') === `#${current}`) {
+                    link.classList.remove('text-gray-700');
+                    link.classList.add('text-red-700', 'font-medium');
+                }
+            });
         });
     </script>
 </body>
