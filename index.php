@@ -66,6 +66,9 @@ $conn->close();
                     <a href="#home" class="text-red-700 font-medium hover:text-red-800 transition">Beranda</a>
                     <a href="#gallery" class="text-gray-700 hover:text-red-700 transition">Galeri</a>
                     <a href="#about" class="text-gray-700 hover:text-red-700 transition">Tentang</a>
+                    <a href="dashboard.php" class="bg-red-800 text-white px-5 py-2 rounded-lg hover:bg-red-900 transition font-medium">
+        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+    </a>
                     <a href="admin.php" class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium">
                         <i class="fas fa-tools mr-2"></i>Kelola Data
                     </a>
@@ -80,6 +83,9 @@ $conn->close();
             <!-- Mobile menu -->
             <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-4 pb-4">
                 <a href="#home" class="block text-red-700 font-medium">Beranda</a>
+                <a href="dashboard.php" class="block bg-red-800 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium text-center">
+        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+    </a>
                 <a href="#gallery" class="block text-gray-700">Galeri</a>
                 <a href="#about" class="block text-gray-700">Tentang</a>
                 <a href="admin.php" class="block bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium text-center">

@@ -162,11 +162,15 @@ if ($result) {
 </head>
 <body class="bg-gradient-to-br from-red-50 to-white min-h-screen">
     <!-- Header -->
+<!-- Header -->
 <header class="bg-red-700 text-white shadow-lg">
     <div class="container mx-auto px-4 py-6 flex justify-between items-center">
         <div class="flex items-center space-x-4">
             <a href="index.php" class="bg-white text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition duration-300 flex items-center">
-                <i class="fas fa-home mr-2"></i> Kembali ke Beranda
+                <i class="fas fa-home mr-2"></i> Beranda
+            </a>
+            <a href="dashboard.php" class="bg-red-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-900 transition duration-300 flex items-center">
+                <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
             </a>
         </div>
         <div>
