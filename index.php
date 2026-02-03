@@ -119,7 +119,7 @@ $conn->close();
                 <div class="md:w-1/2">
                     <div class="relative">
                         <div class="bg-red-100 rounded-2xl p-2 shadow-xl">
-                            <img src="https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
+                            <img src="assets/img/uang-baru-10-ribu.jpg" 
                                  alt="Patung Pahlawan" 
                                  class="rounded-xl w-full h-64 md:h-80 object-cover">
                         </div>

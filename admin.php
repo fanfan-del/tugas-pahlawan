@@ -229,10 +229,10 @@ if ($result) {
                                         <td class="px-5 py-5 text-sm"><?php echo htmlspecialchars($hero['daerah']); ?></td>
                                         <td class="px-5 py-5 text-sm"><?php echo htmlspecialchars($hero['jasa']); ?></td>
                                         <td class="px-5 py-5 text-sm">
-                                            <a href="index.php?edit_id=<?php echo $hero['id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">
+                                            <a href="admin.php?edit_id=<?php echo $hero['id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">
                                                 <i class="fas fa-edit"></i> Edit
                                             </a>
-                                            <a href="index.php?delete_id=<?php echo $hero['id']; ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="text-red-600 hover:text-red-900">
+                                            <a href="admin.php?delete_id=<?php echo $hero['id']; ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="text-red-600 hover:text-red-900">
                                                 <i class="fas fa-trash"></i> Hapus
                                             </a>
                                         </td>
@@ -258,7 +258,7 @@ if ($result) {
                 </button>
             </div>
             
-            <form action="index.php" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <form action="admin.php" method="POST" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="id" value="<?php echo $hero_to_edit['id'] ?? ''; ?>">
                 
                 <div>
